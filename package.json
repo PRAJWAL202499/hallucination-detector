@@ -1,0 +1,24 @@
+{
+  "name": "hallucination-detector",
+  "version": "1.0.0",
+  "description": "a hallucination detector with chrome extentsion and DOM injection",
+  "main": "server.js",
+  "scripts": {
+    "test": "npm install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PRAJWAL202499/hallucination-detector.git"
+  },
+  "keywords": [
+    "hallucination",
+    "ai",
+    "llm"
+  ],
+  "author": "Prajwal G S",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/PRAJWAL202499/hallucination-detector/issues"
+  },
+  "homepage": "https://github.com/PRAJWAL202499/hallucination-detector#readme"
+}
