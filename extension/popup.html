@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hallucination Detector</title>
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Tokens (light default) ── */
+    :root {
+      --accent:      #16a34a;
+      --accent-dim:  #bbf7d0;
+      --bg:          #ffffff;
+      --bg-card:     #f9fafb;
+      --border:      #e5e7eb;
+      --text:        #111827;
+      --text-muted:  #6b7280;
+      --red:         #dc2626;
+      --radius:      12px;
+      --transition:  0.2s ease;
+    }
+
+    /* ── Dark theme (explicit, overrides prefers-color-scheme) ── */
+    [data-theme="dark"] {
+      --bg:         #1f2937;
+      --bg-card:    #111827;
+      --border:     #374151;
+      --text:       #f9fafb;
+      --text-muted: #9ca3af;
+      --accent-dim: #14532d;
+    }
+
+    /* ── System dark fallback (when no explicit theme is saved) ── */
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg:         #1f2937;
+        --bg-card:    #111827;
+        --border:     #374151;
+        --text:       #f9fafb;
+        --text-muted: #9ca3af;
+        --accent-dim: #14532d;
+      }
+    }
+
+    /* ── Layout ── */
+    body {
+      width: 320px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      transition: background var(--transition), color var(--transition);
+    }
+
+    /* ── Header ── */
+    .hd-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px 16px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .hd-header img {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+    }
+    .hd-header h1 {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      flex: 1;
+    }
+
+    /* ── Theme toggle button ── */
+    #themeToggle {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      transition: background var(--transition), border-color var(--transition), transform 0.15s ease;
+      flex-shrink: 0;
+    }
+    #themeToggle:hover {
+      background: var(--border);
+      transform: scale(1.08);
+    }
+    #themeToggle:active { transform: scale(0.95); }
+
+    /* ── Body sections ── */
+    .hd-section {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .hd-section:last-of-type { border-bottom: none; }
+    .hd-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    /* ── Toggle row ── */
+    .hd-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .hd-status-text {
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .hd-status-text.active { color: var(--accent); }
+    .hd-status-text.paused { color: var(--text-muted); }
+
+    /* ── Pure-CSS toggle switch ── */
+    .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; inset: 0;
+      background: var(--border);
+      border-radius: 24px;
+      cursor: pointer;
+      transition: background var(--transition);
+    }
+    .slider::before {
+      content: '';
+      position: absolute;
+      left: 3px; top: 3px;
+      width: 18px; height: 18px;
+      background: #fff;
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+      transition: transform var(--transition);
+    }
+    input:checked + .slider              { background: var(--accent); }
+    input:checked + .slider::before      { transform: translateX(20px); }
+    input:focus-visible + .slider        { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* ── Stats grid ── */
+    .hd-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .hd-stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      transition: background var(--transition), border-color var(--transition);
+    }
+    .hd-stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1.2;
+    }
+    .hd-stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* ── Backend status ── */
+    .hd-backend {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .hd-dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      transition: background var(--transition);
+    }
+    .hd-dot.online  { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+    .hd-dot.offline { background: var(--red);    box-shadow: 0 0 0 3px #fee2e2; }
+    .hd-dot.checking { background: #d1d5db; }
+    .hd-backend-text { font-size: 13px; font-weight: 500; }
+
+    /* ── Footer ── */
+    .hd-footer {
+      padding: 10px 16px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="hd-header">
+    <img src="icons/icon.png" alt="Hallucination Detector logo" />
+    <h1>Hallucination Detector</h1>
+    <button id="themeToggle" aria-label="Toggle dark/light mode" title="Toggle theme">🌙</button>
+  </header>
+
+  <!-- Toggle / Status -->
+  <section class="hd-section">
+    <div class="hd-label">Extension Status</div>
+    <div class="hd-toggle-row">
+      <span id="statusText" class="hd-status-text active">Active</span>
+      <label class="switch" aria-label="Enable or disable extension">
+        <input type="checkbox" id="enableToggle" checked />
+        <span class="slider"></span>
+      </label>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <section class="hd-section">
+    <div class="hd-label">Today's Stats</div>
+    <div class="hd-stats">
+      <div class="hd-stat-card">
+        <div class="hd-stat-value" id="checksToday">—</div>
+        <div class="hd-stat-label">Responses checked</div>
+      </div>
+      <div class="hd-stat-card">
+        <div class="hd-stat-value" id="avgTrust">—</div>
+        <div class="hd-stat-label">Avg trust score</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Backend status -->
+  <section class="hd-section">
+    <div class="hd-label">Backend</div>
+    <div class="hd-backend">
+      <span class="hd-dot checking" id="backendDot"></span>
+      <span class="hd-backend-text" id="backendText">Checking…</span>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="hd-footer">By </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>
